@@ -8,6 +8,13 @@ use std::{
   cell::RefCell
 };
 
+static EQ_DICT: [&str; 4] = [
+  "News & Blog Posts",
+  "blog posts",
+  "Announcements",
+  "Blog Posts"
+];
+
 pub struct Link {
   pub url: String,
   pub text: String
@@ -18,15 +25,25 @@ pub struct LinksContainer {
 }
 
 impl LinksContainer {
-  fn extend_from_root<'a>(&mut self, root: &'a AstNode<'a>) {
+  pub fn new() -> Self {
+    LinksContainer {
+      links: Vec::new()
+    }
+  }
+
+  pub fn extend_from_root<'a>(&mut self, root: &'a AstNode<'a>) -> bool {
     let mut node_section_lookup = false;
     for node in root.children() {
       let ast = node.data.borrow();
       if !node_section_lookup {
         match ast.value {
           NodeValue::Heading(_) => {
-            if "News & Blog Posts" == str::from_utf8(&ast.content).unwrap() {
-              node_section_lookup = true;
+            let heading_content = str::from_utf8(&ast.content).unwrap();
+            for comp in EQ_DICT.iter() {
+              if heading_content.contains(*comp)  {
+                node_section_lookup = true;
+                break;
+              }
             }
           },
           _ => {}
@@ -36,7 +53,10 @@ impl LinksContainer {
           NodeValue::List(_) => {
             for item in node.children() {
               match Link::try_from_list_node(item) {
-                Some(l) => self.links.push(l),
+                Some(l) => {
+                  self.links.push(l);
+                  return true;
+                },
                 None => {},
               }
             }
@@ -46,6 +66,7 @@ impl LinksContainer {
         }
       }
     }
+    false
   }
 }
 

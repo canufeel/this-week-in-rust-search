@@ -6,9 +6,10 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use comrak::{parse_document, Arena, ComrakOptions};
+use comrak::nodes::AstNode;
 
-fn main() {
-    // Create a path to the desired file
+fn main() -> Result<(), String> {
+    /*// Create a path to the desired file
     let path = Path::new("2020-04-07-this-week-in-rust.md");
     let display = path.display();
 
@@ -21,16 +22,35 @@ fn main() {
         Ok(file) => file,
     };
 
-    let arena = Arena::new();
+
     let mut s = String::new();
-    file.read_to_string(& mut s).unwrap();
-    let root = parse_document(
-        &arena,
-        &s,
-        &ComrakOptions::default()
-    );
-    let links = links::LinksContainer::from(root);
-    for ref link in links.links {
+    file.read_to_string(& mut s).unwrap();*/
+
+    let all_contents = fetch::get_all_file_contents()?;
+
+    let arena = Arena::new();
+    let roots = all_contents
+      .into_iter()
+      .map(|(url, s)| (
+          url,
+          parse_document(
+              &arena,
+              &s,
+              &ComrakOptions::default()
+          )
+      )
+      ).collect::<Vec<(String, &AstNode)>>();
+
+    let mut links_container = links::LinksContainer::new();
+
+    for (url, root) in roots {
+        if !links_container.extend_from_root(root) {
+            println!("Not found for url: {}", &url);
+        }
+    }
+
+    for ref link in links_container.links {
         println!("{}", link);
     }
+    Ok(())
 }
