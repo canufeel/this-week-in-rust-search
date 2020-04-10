@@ -1117,6 +1117,7 @@ dependencies = [
  "comrak",
  "dotenv",
  "futures",
+ "log",
  "reqwest",
  "serde",
  "tokio",

@@ -22,7 +22,7 @@ impl <'a> TempAdapter for FsAdapter <'a> {
   fn load(&self) -> Result<Option<Vec<StorageItem>>, String> {
     let mut file = match File::open(self.path) {
       Ok(f) => f,
-      Err(e) => {
+      Err(_) => {
         return Ok(None)
       }
     };

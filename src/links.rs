@@ -7,12 +7,15 @@ use std::{
   fmt::{self, Display},
   cell::RefCell
 };
+use log::{warn, info};
 
-static EQ_DICT: [&str; 4] = [
+static EQ_DICT: [&str; 6] = [
   "News & Blog Posts",
   "blog posts",
   "Announcements",
-  "Blog Posts"
+  "Blog Posts",
+  "Blogosphere",
+  "Notable Links"
 ];
 
 pub struct Link {
@@ -31,7 +34,11 @@ impl LinksContainer {
     }
   }
 
-  pub fn extend_from_root<'a>(&mut self, root: &'a AstNode<'a>) -> bool {
+  pub fn extend_from_root<'a>(
+    &mut self,
+    root: &'a AstNode<'a>,
+    container_id: String
+  ) -> bool {
     let mut node_section_lookup = false;
     for node in root.children() {
       let ast = node.data.borrow();
@@ -51,32 +58,29 @@ impl LinksContainer {
       } else {
         match ast.value {
           NodeValue::List(_) => {
+            let mut found_num = 0;
             for item in node.children() {
               match Link::try_from_list_node(item) {
                 Some(l) => {
                   self.links.push(l);
-                  return true;
+                  found_num += 1;
                 },
                 None => {},
               }
             }
+            if found_num > 0 {
+              info!("List parsing for id: {} found {} links", container_id, found_num);
+              return true;
+            }
+            warn!("List parsing failed for id: {}", container_id);
             break;
           },
           _ => {}
         }
       }
     }
+    warn!("Heading not found for id: {}", container_id);
     false
-  }
-}
-
-impl <'a> From<&'a AstNode<'a>> for LinksContainer {
-  fn from(root: &'a AstNode<'a>) -> Self {
-    let mut links_container = LinksContainer {
-      links: Vec::new()
-    };
-    links_container.extend_from_root(root);
-    links_container
   }
 }
 

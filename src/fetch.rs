@@ -1,12 +1,10 @@
 use tokio::runtime::{Runtime};
-use tokio::time::delay_for;
-use futures::{stream, StreamExt, future};
+use futures::{stream, StreamExt};
 use serde::Deserialize;
 use std::str;
 use base64::{decode, encode};
-use std::error::Error;
-use std::time::Duration;
 use reqwest::{Client, header, Response};
+use log::{info};
 
 use dotenv::dotenv;
 use std::env;
@@ -17,23 +15,17 @@ static APP_USER_AGENT: &str = "This-Week-In-Rust-Search";
 static GITHUB_CLIENT_KEY: &str = "GITHUB_CLIENT_KEY";
 static GITHUB_CLIENT_SECRET: &str = "GITHUB_CLIENT_SECRET";
 
-const PARALLEL_REQUESTS: usize = 4;
+const PARALLEL_REQUESTS: usize = 10;
 
 #[derive(Deserialize)]
 struct TreeItem {
   path: String,
-  #[serde(rename(deserialize = "type"))]
-  tree_type: String,
-  sha: String,
   url: String
 }
 
 #[derive(Deserialize)]
 struct TreeResponse {
-  sha: String,
-  url: String,
   tree: Vec<TreeItem>,
-  truncated: bool,
 }
 
 #[derive(Deserialize)]
@@ -76,7 +68,7 @@ impl Fetcher {
   }
 
   async fn https_get (&self, url: &str) -> Result<Response, String> {
-    let auth_header = encode(format!("Basic {}:{}", self.client_key, self.client_secret));
+    let auth_header = format!("Basic {}", encode(format!("{}:{}", self.client_key, self.client_secret)));
     let mut headers = header::HeaderMap::new();
     headers.insert(header::ACCEPT, header::HeaderValue::from_static("application/vnd.github.v3+json"));
     headers.insert(
@@ -117,13 +109,16 @@ impl Fetcher {
           .map(|i| (i.url, i.path))
           .collect::<Vec<(String, String)>>();
         let filtered_vec = if let Some(loaded) = self.temp_adapter.load_ids()? {
+          info!("Loaded {} items from tmp", loaded.len());
           md_only_vec
             .into_iter()
-            .filter(|(url, path)| !loaded.contains(url))
+            .filter(|(url, _)| !loaded.contains(url))
             .collect::<Vec<(String, String)>>()
         } else {
+          info!("Loaded 0 items from tmp");
           md_only_vec
         };
+        info!("Fetched details about {} items", filtered_vec.len());
         Ok(filtered_vec)
       },
       None => Err(String::from("Content not found")),
@@ -147,11 +142,12 @@ impl Fetcher {
     rt.block_on(async {
       let urls = self.get_tree().await?;
 
-      stream::iter(urls)
-        .map(|(url, path)| async move {
-          delay_for(Duration::from_secs(1)).await;
+      stream::iter(urls.into_iter().enumerate())
+        .map(|(idx, (url, path))| async move {
+          info!("About to get blob for item with idx: {}", idx);
           let res = self.get_blob(&url).await?;
           let item = StorageItem::new(url, path, res);
+          info!("Storing item url: {}, path: {}", item.url, item.path);
           self.temp_adapter.update(item)?;
           Ok(())
         })
@@ -163,18 +159,18 @@ impl Fetcher {
     })
   }
 
-  pub fn get_all_file_contents (&self) -> Result<Vec<(String, String)>, String> {
+  pub fn get_all_file_contents (&self) -> Result<Vec<StorageItem>, String> {
     self.fetch_save_all_base64_blobs()?;
     if let Some(blobs) = self.temp_adapter.load()? {
-      let (urls, string_blobs): (Vec<String>, Vec<String>) = blobs
+      let (urls_and_paths, string_blobs): (Vec<(String, String)>, Vec<String>) = blobs
         .into_iter()
-        .map(| StorageItem { url, content, .. }| (url, content))
+        .map(| StorageItem { url, content, path }| ((url, path), content))
         .unzip();
       let parsed_blobs = parse_base64_blobs(string_blobs)?;
       Ok(
-        urls
+        urls_and_paths
           .into_iter()
-          .zip(parsed_blobs)
+          .zip(parsed_blobs).map(|((url, path), content)| StorageItem::new(url, path, content))
           .collect()
       )
     } else {
