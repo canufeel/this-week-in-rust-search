@@ -10,7 +10,7 @@ use reqwest::{Client, header, Response};
 
 use dotenv::dotenv;
 use std::env;
-use crate::temp_adapter::TempAdapter;
+use crate::temp_adapter::{TempAdapter, StorageItem};
 
 static INITIAL_TREE_URL: &str = "https://api.github.com/repos/emberian/this-week-in-rust/git/trees/master";
 static APP_USER_AGENT: &str = "This-Week-In-Rust-Search";
@@ -95,7 +95,8 @@ impl Fetcher {
       .map_err(|e| e.to_string())
   }
 
-  async fn get_tree (&self) -> Result<Vec<String>, String> {
+  // Vec<(url, path)>
+  async fn get_tree (&self) -> Result<Vec<(String, String)>, String> {
     let tree_response: TreeResponse = self.https_get(INITIAL_TREE_URL)
       .await?
       .json::<TreeResponse>()
@@ -110,11 +111,19 @@ impl Fetcher {
           .json::<TreeResponse>()
           .await
           .map_err(|e| e.to_string())?;
-        let filtered_vec = content_tree_response.tree
+        let md_only_vec = content_tree_response.tree
           .into_iter()
           .filter(|item| item.path.ends_with(".md"))
-          .map(|i| i.url)
-          .collect::<Vec<String>>();
+          .map(|i| (i.url, i.path))
+          .collect::<Vec<(String, String)>>();
+        let filtered_vec = if let Some(loaded) = self.temp_adapter.load_ids()? {
+          md_only_vec
+            .into_iter()
+            .filter(|(url, path)| !loaded.contains(url))
+            .collect::<Vec<(String, String)>>()
+        } else {
+          md_only_vec
+        };
         Ok(filtered_vec)
       },
       None => Err(String::from("Content not found")),
@@ -131,7 +140,7 @@ impl Fetcher {
   }
 
 
-  fn get_all_base64_blobs (&self) -> Result<Vec<(String, String)>, String> {
+  fn fetch_save_all_base64_blobs (&self) -> Result<Vec<()>, String> {
     let mut rt = Runtime::new()
       .map_err(|e| e.to_string())?;
 
@@ -139,30 +148,37 @@ impl Fetcher {
       let urls = self.get_tree().await?;
 
       stream::iter(urls)
-        .map(|url| async move {
+        .map(|(url, path)| async move {
           delay_for(Duration::from_secs(1)).await;
           let res = self.get_blob(&url).await?;
-          Ok((url, res))
+          let item = StorageItem::new(url, path, res);
+          self.temp_adapter.update(item)?;
+          Ok(())
         })
         .buffer_unordered(PARALLEL_REQUESTS)
-        .collect::<Vec<Result<(String, String), String>>>()
+        .collect::<Vec<Result<(), String>>>()
         .await
         .into_iter()
-        .collect::<Result<Vec<(String, String)>, String>>()
+        .collect::<Result<Vec<()>, String>>()
     })
   }
 
   pub fn get_all_file_contents (&self) -> Result<Vec<(String, String)>, String> {
-    let blobs = self.get_all_base64_blobs()?;
-    let (urls, string_blobs): (Vec<String>, Vec<String>) = blobs
-      .into_iter()
-      .unzip();
-    let parsed_blobs = parse_base64_blobs(string_blobs)?;
-    Ok(
-      urls
+    self.fetch_save_all_base64_blobs()?;
+    if let Some(blobs) = self.temp_adapter.load()? {
+      let (urls, string_blobs): (Vec<String>, Vec<String>) = blobs
         .into_iter()
-        .zip(parsed_blobs)
-        .collect()
-    )
+        .map(| StorageItem { url, content, .. }| (url, content))
+        .unzip();
+      let parsed_blobs = parse_base64_blobs(string_blobs)?;
+      Ok(
+        urls
+          .into_iter()
+          .zip(parsed_blobs)
+          .collect()
+      )
+    } else {
+      Err("no records found".to_owned())
+    }
   }
 }
