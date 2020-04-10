@@ -1,4 +1,5 @@
 mod links;
+mod fetch;
 
 use std::error::Error;
 use std::fs::File;
