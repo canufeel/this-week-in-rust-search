@@ -1,5 +1,6 @@
 mod links;
 mod fetch;
+mod temp_adapter;
 
 use std::error::Error;
 use std::fs::File;
@@ -26,7 +27,8 @@ fn main() -> Result<(), String> {
     let mut s = String::new();
     file.read_to_string(& mut s).unwrap();*/
 
-    let all_contents = fetch::get_all_file_contents()?;
+    let fetcher = fetch::Fetcher::with_env()?;
+    let all_contents = fetcher.get_all_file_contents()?;
 
     let arena = Arena::new();
     let roots = all_contents
