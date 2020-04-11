@@ -1,7 +1,9 @@
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import './App.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import SearchBox from './SearchBox';
 import SearchResults from './SearchResults';
+import { Container } from 'react-bootstrap';
 
 // eslint-disable-next-line no-undef
 const serverPath = SERVER_URL;
@@ -73,16 +75,18 @@ class App extends Component {
 
   render() {
     return (
-      <div className="app-container">
+      <Fragment>
         <SearchBox
           query={ this.state.query }
           queryUpdate={ (q) => this.updateQuery(q) }
         />
-        <SearchResults
-          results={ this.state.searchResults }
-          openSlugUrl={ (s) => this.openSlugUrl(s) }
-        />
-      </div>
+        <Container id="main-container">
+          <SearchResults
+            results={ this.state.searchResults }
+            openSlugUrl={ (s) => this.openSlugUrl(s) }
+          />
+        </Container>
+      </Fragment>
     );
   }
 }
