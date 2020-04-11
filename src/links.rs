@@ -2,12 +2,17 @@ use comrak::{
   nodes::{AstNode, NodeValue, NodeLink, Ast},
   arena_tree::Node
 };
+use serde::Serialize;
 use std::{
   str,
   fmt::{self, Display},
   cell::RefCell
 };
-use log::{warn, info};
+use log::{warn, debug};
+
+use actix_web::{Error, HttpRequest, HttpResponse, Responder};
+use futures::future::{ready, Ready};
+use serde_json;
 
 static EQ_DICT: [&str; 6] = [
   "News & Blog Posts",
@@ -18,11 +23,13 @@ static EQ_DICT: [&str; 6] = [
   "Notable Links"
 ];
 
+#[derive(Clone, Serialize)]
 pub struct Link {
   pub url: String,
   pub text: String
 }
 
+#[derive(Clone, Serialize)]
 pub struct LinksContainer {
   pub links: Vec<Link>
 }
@@ -31,6 +38,16 @@ impl LinksContainer {
   pub fn new() -> Self {
     LinksContainer {
       links: Vec::new()
+    }
+  }
+
+  pub fn filter_query(&self, query: &str) -> Self {
+    LinksContainer {
+      links: self.links
+        .iter()
+        .filter(|Link { text, .. }| text.contains(query))
+        .cloned()
+        .collect::<Vec<Link>>()
     }
   }
 
@@ -69,7 +86,7 @@ impl LinksContainer {
               }
             }
             if found_num > 0 {
-              info!("List parsing for id: {} found {} links", container_id, found_num);
+              debug!("List parsing for id: {} found {} links", container_id, found_num);
               return true;
             }
             warn!("List parsing failed for id: {}", container_id);
@@ -124,5 +141,20 @@ impl Link {
 impl Display for Link {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "Title: {}, Link: {}", self.text, self.url)
+  }
+}
+
+// Responder
+impl Responder for LinksContainer {
+  type Error = Error;
+  type Future = Ready<Result<HttpResponse, Error>>;
+
+  fn respond_to(self, _req: &HttpRequest) -> Self::Future {
+    let body = serde_json::to_string(&self).unwrap();
+
+    // Create response and set content type
+    ready(Ok(HttpResponse::Ok()
+      .content_type("application/json")
+      .body(body)))
   }
 }
