@@ -2,7 +2,7 @@ use comrak::{
   nodes::{AstNode, NodeValue, NodeLink, Ast},
   arena_tree::Node
 };
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::{
   str,
   fmt::{self, Display},
@@ -11,6 +11,8 @@ use std::{
 use log::{warn, debug};
 use std::collections::HashMap;
 use guid_create::GUID;
+use chrono::{NaiveDate};
+
 
 static EQ_DICT: [&str; 6] = [
   "News & Blog Posts",
@@ -23,12 +25,20 @@ static EQ_DICT: [&str; 6] = [
 
 type Slug = String;
 
+fn serialize_date<S>(date: &NaiveDate, ser: S) -> Result<S::Ok, S::Error>
+  where S: Serializer
+{
+  ser.serialize_str(&date.format("%Y-%m-%d").to_string())
+}
+
 #[derive(Clone, Serialize)]
 pub struct Link {
   #[serde(skip_serializing)]
   pub url: String,
   pub text: String,
   pub slug: Slug,
+  #[serde(serialize_with = "serialize_date")]
+  pub date: NaiveDate,
   hits: u32,
   user_rating: i32,
 }
@@ -55,13 +65,14 @@ impl LinksContainer {
         filtered_links.push(link.clone());
       }
     }
+    filtered_links.sort_by(|a, b| b.date.cmp(&a.date));
     filtered_links
   }
 
   pub fn extend_from_root<'a>(
     &mut self,
     root: &'a AstNode<'a>,
-    container_id: String
+    container_id: NaiveDate
   ) -> bool {
     let mut node_section_lookup = false;
     for node in root.children() {
@@ -84,7 +95,7 @@ impl LinksContainer {
           NodeValue::List(_) => {
             let mut found_num = 0;
             for item in node.children() {
-              match Link::try_from_list_node(item) {
+              match Link::try_from_list_node(item, container_id.clone()) {
                 Some(l) => {
                   if !self.urls_to_links.contains_key(&l.url) {
                     self.slugs_to_urls.insert(l.slug.clone(), l.url.clone());
@@ -97,23 +108,26 @@ impl LinksContainer {
               }
             }
             if found_num > 0 {
-              debug!("List parsing for id: {} found {} links", container_id, found_num);
+              debug!("List parsing for id: {} found {} links", container_id.format("%Y-%m-%d"), found_num);
               return true;
             }
-            warn!("List parsing failed for id: {}", container_id);
+            warn!("List parsing failed for id: {}", container_id.format("%Y-%m-%d"));
             break;
           },
           _ => {}
         }
       }
     }
-    warn!("Heading not found for id: {}", container_id);
+    warn!("Heading not found for id: {}", container_id.format("%Y-%m-%d"));
     false
   }
 }
 
 impl Link {
-  fn try_from_list_node<'a>(item: &'a Node<'a, RefCell<Ast>>) -> Option<Self> {
+  fn try_from_list_node<'a>(
+    item: &'a Node<'a, RefCell<Ast>>,
+    date: NaiveDate
+  ) -> Option<Self> {
     for paragraph_markdown in item.children() {
       let paragraph_markdown_ast = paragraph_markdown.data.borrow();
       let _paragraph_text = str::from_utf8(&paragraph_markdown_ast.content).unwrap();
@@ -123,7 +137,9 @@ impl Link {
       for child in paragraph_markdown.children() {
         match &child.data.borrow().value {
           NodeValue::Link(NodeLink { url: link_url, .. }) => {
-            url.push_str(str::from_utf8(&link_url).unwrap());
+            if url.len() == 0 {
+              url.push_str(str::from_utf8(&link_url).unwrap());
+            }
             for link_child in child.children() {
               match &link_child.data.borrow().value {
                 NodeValue::Text(contents) => {
@@ -143,6 +159,7 @@ impl Link {
       return Some(Link {
         url,
         text,
+        date,
         slug: GUID::rand().to_string(),
         hits: 0,
         user_rating: 0

@@ -11,6 +11,7 @@ use log::{info, warn, debug};
 use temp_adapter::StorageItem;
 use crate::links::LinksContainer;
 use std::env;
+use chrono::{NaiveDate};
 
 static SERVER_URL: &str = "SERVER_URL";
 
@@ -40,7 +41,12 @@ fn fetch_and_parse_data () -> Result<LinksContainer, String> {
   let mut links_container = links::LinksContainer::new();
 
   for (url, path, root) in roots {
-    if !links_container.extend_from_root(root, parse_path_date(&path)) {
+    let article_date = NaiveDate::parse_from_str(&parse_path_date(&path), "%Y-%m-%d")
+      .map_err(|e| e.to_string())?;
+    if !links_container.extend_from_root(
+      root,
+      article_date
+    ) {
       warn!("Not found for url: {} and path: {}", &url, &path);
     }
   }

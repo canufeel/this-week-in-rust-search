@@ -1,12 +1,4 @@
-use actix_web::{
-  web,
-  App,
-  HttpServer,
-  Responder,
-  Error,
-  HttpRequest,
-  HttpResponse
-};
+use actix_web::{web, App, HttpServer, Responder, Error, HttpRequest, HttpResponse, http};
 use serde::{Deserialize, Serialize};
 use log::{debug, warn};
 use futures::future::{ready, Ready};
@@ -43,6 +35,7 @@ impl Responder for QueryResponse {
     };
 
     ready(Ok(HttpResponse::Ok()
+      .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
       .content_type("application/json")
       .body(body)))
   }
@@ -59,6 +52,7 @@ impl Responder for GetUrlResponse {
     };
 
     ready(Ok(HttpResponse::Ok()
+      .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
       .content_type("application/json")
       .body(body)))
   }
@@ -93,6 +87,15 @@ async fn get_query(
   }
 }
 
+async fn all_items(data: web::Data<LinksContainer>) -> impl Responder {
+  let mut sorted_links = Vec::new();
+  for link in data.get_ref().urls_to_links.values() {
+    sorted_links.push(link.clone())
+  }
+  sorted_links.sort_by(|a, b| b.date.cmp(&a.date));
+  QueryResponse::Response(sorted_links)
+}
+
 pub fn start_server(
   links_container: LinksContainer,
   url: String
@@ -104,6 +107,7 @@ pub fn start_server(
           .data(links_container.clone())
           .route("/query", web::get().to(get_query))
           .route("/slug/{slug}", web::get().to(get_url))
+          .route("/all", web::get().to(all_items))
       })
         .bind(&url)?
         .run()
