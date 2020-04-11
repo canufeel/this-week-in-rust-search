@@ -45,10 +45,10 @@ fn fetch_and_parse_data () -> Result<LinksContainer, String> {
     }
   }
 
-  for ref link in &links_container.links {
+  for ref link in links_container.urls_to_links.values() {
     debug!("{}", *link);
   }
-  info!("Total links found: {}", links_container.links.len());
+  info!("Total links found: {}", links_container.urls_to_links.len());
   Ok(links_container)
 }
 

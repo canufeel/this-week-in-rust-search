@@ -9,10 +9,8 @@ use std::{
   cell::RefCell
 };
 use log::{warn, debug};
-
-use actix_web::{Error, HttpRequest, HttpResponse, Responder};
-use futures::future::{ready, Ready};
-use serde_json;
+use std::collections::HashMap;
+use guid_create::GUID;
 
 static EQ_DICT: [&str; 6] = [
   "News & Blog Posts",
@@ -23,32 +21,41 @@ static EQ_DICT: [&str; 6] = [
   "Notable Links"
 ];
 
+type Slug = String;
+
 #[derive(Clone, Serialize)]
 pub struct Link {
+  #[serde(skip_serializing)]
   pub url: String,
-  pub text: String
+  pub text: String,
+  pub slug: Slug,
+  hits: u32,
+  user_rating: i32,
 }
 
 #[derive(Clone, Serialize)]
 pub struct LinksContainer {
-  pub links: Vec<Link>
+  pub urls_to_links: HashMap<String, Link>,
+  pub slugs_to_urls: HashMap<Slug, String>
 }
 
 impl LinksContainer {
   pub fn new() -> Self {
     LinksContainer {
-      links: Vec::new()
+      urls_to_links: HashMap::new(),
+      slugs_to_urls: HashMap::new()
     }
   }
 
-  pub fn filter_query(&self, query: &str) -> Self {
-    LinksContainer {
-      links: self.links
-        .iter()
-        .filter(|Link { text, .. }| text.contains(query))
-        .cloned()
-        .collect::<Vec<Link>>()
+  pub fn filter_query(&self, query: &str) -> Vec<Link> {
+    let lowercase_query = query.to_lowercase();
+    let mut filtered_links = Vec::new();
+    for link in self.urls_to_links.values() {
+      if link.text.to_lowercase().contains(&lowercase_query) {
+        filtered_links.push(link.clone());
+      }
     }
+    filtered_links
   }
 
   pub fn extend_from_root<'a>(
@@ -79,8 +86,12 @@ impl LinksContainer {
             for item in node.children() {
               match Link::try_from_list_node(item) {
                 Some(l) => {
-                  self.links.push(l);
-                  found_num += 1;
+                  if !self.urls_to_links.contains_key(&l.url) {
+                    self.slugs_to_urls.insert(l.slug.clone(), l.url.clone());
+                    self.urls_to_links.insert(l.url.clone(), l);
+
+                    found_num += 1;
+                  }
                 },
                 None => {},
               }
@@ -131,7 +142,10 @@ impl Link {
       }
       return Some(Link {
         url,
-        text
+        text,
+        slug: GUID::rand().to_string(),
+        hits: 0,
+        user_rating: 0
       });
     }
     None
@@ -141,20 +155,5 @@ impl Link {
 impl Display for Link {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "Title: {}, Link: {}", self.text, self.url)
-  }
-}
-
-// Responder
-impl Responder for LinksContainer {
-  type Error = Error;
-  type Future = Ready<Result<HttpResponse, Error>>;
-
-  fn respond_to(self, _req: &HttpRequest) -> Self::Future {
-    let body = serde_json::to_string(&self).unwrap();
-
-    // Create response and set content type
-    ready(Ok(HttpResponse::Ok()
-      .content_type("application/json")
-      .body(body)))
   }
 }
