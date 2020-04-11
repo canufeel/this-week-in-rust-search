@@ -3,21 +3,23 @@ import './App.css';
 import SearchBox from './SearchBox';
 import SearchResults from './SearchResults';
 
-const urlRoot = 'http://127.0.0.1:8088';
+// eslint-disable-next-line no-undef
+const serverPath = SERVER_URL;
+const serverRoot = 'http://';
 
 const getQueryResult = async q => {
-  const res = await fetch(`${urlRoot}/query?query=${q}`);
+  const res = await fetch(`${serverRoot}${serverPath}/query?query=${q}`);
   return res.json();
 };
 
 const getAllResults = async () => {
-  const res = await fetch(`${urlRoot}/all`);
+  const res = await fetch(`${serverRoot}${serverPath}/all`);
   return res.json();
 };
 
 const timeOut = t => new Promise(resolve => setTimeout(resolve, t));
 
-const getSlugLink = slug => `${urlRoot}/slug/${slug}`;
+const getSlugLink = slug => `${serverRoot}${serverPath}/slug/${slug}`;
 
 class App extends Component {
   state = {
