@@ -13,7 +13,8 @@ use crate::links::LinksContainer;
 use std::env;
 use chrono::{NaiveDate};
 
-static SERVER_URL: &str = "SERVER_URL";
+static SERVER_IP: &str = "SERVER_IP";
+static PORT: &str = "PORT";
 
 fn parse_path_date (path: &String) -> String {
   path[0..10].to_owned()
@@ -80,8 +81,11 @@ fn main() -> Result<(), String> {
   info!("Logger setup success");
   let links_container = fetch_and_parse_data()?;
 
-  let url = env::var(SERVER_URL)
+  let ip = env::var(SERVER_IP)
     .map_err(|e| e.to_string())?;
+  let port = env::var(PORT)
+    .map_err(|e| e.to_string())?;
+  let url = format!("{}:{}", ip, port);
 
   server::start_server(links_container, url)
     .map_err(|e| e.to_string())?;

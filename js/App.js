@@ -5,13 +5,14 @@ import SearchBox from './SearchBox';
 import SearchResults from './SearchResults';
 import { Container } from 'react-bootstrap';
 
-// eslint-disable-next-line no-undef
-const serverPath = SERVER_URL;
-// eslint-disable-next-line no-undef
+/* eslint-disable no-undef */
+const serverIp = SERVER_IP;
+const serverPort = PORT;
 const production = PRODUCTION;
 const serverRoot = 'http://';
+/* eslint-enable no-undef */
 
-const buildUrl = path => production ? path : `${serverRoot}${serverPath}${path}`;
+const buildUrl = path => production ? path : `${serverRoot}${serverIp}${serverPort}${path}`;
 
 const getQueryResult = async q => {
   const res = await fetch(buildUrl(`/query?query=${q}`));
