@@ -8,7 +8,7 @@ The idea behind this app is very simple. [This week in rust](https://github.com/
 ```shell script
 cp .env.sample .env
 ```
-- Setup `GITHUB_CLIENT_KEY` and `GITHUB_CLIENT_SECRET` in created `.env` file. This variables should use your actual github account name and account password since only basic auth scheme is supported.
+- Setup `GITHUB_ACCESS_TOKEN` in created `.env` file. This variable should use your actual [github personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) since only basic auth scheme is supported. Make sure to check `repo -> public_repo` when generating a personal token.
 
 ## Running
 

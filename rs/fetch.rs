@@ -14,6 +14,7 @@ static INITIAL_TREE_URL: &str = "https://api.github.com/repos/emberian/this-week
 static APP_USER_AGENT: &str = "This-Week-In-Rust-Search";
 static GITHUB_CLIENT_KEY: &str = "GITHUB_CLIENT_KEY";
 static GITHUB_CLIENT_SECRET: &str = "GITHUB_CLIENT_SECRET";
+static GITHUB_ACCESS_TOKEN: &str = "GITHUB_ACCESS_TOKEN";
 
 const PARALLEL_REQUESTS: usize = 10;
 
@@ -47,28 +48,55 @@ fn parse_base64_blobs (blobs: Vec<String>) -> Result<Vec<String>, String> {
     .collect::<Result<Vec<String>, String>>()
 }
 
+enum GithubAccessOpts {
+  BasicUsernamePassword(String, String),
+  BasicToken(String)
+}
+
 pub struct Fetcher {
-  client_key: String,
-  client_secret: String,
+  auth_opts: GithubAccessOpts,
   temp_adapter: Box<dyn TempAdapter>,
 }
 
 impl Fetcher {
   pub fn with_env (temp_adapter: Box<dyn TempAdapter>) -> Result<Self, String> {
     dotenv().ok();
-    let client_key = env::var(GITHUB_CLIENT_KEY)
-      .map_err(|e| e.to_string())?;
-    let client_secret = env::var(GITHUB_CLIENT_SECRET)
-      .map_err(|e| e.to_string())?;
+    let auth_opts: Result<GithubAccessOpts, String> = match env::var(GITHUB_ACCESS_TOKEN) {
+      Ok(token) => Ok(GithubAccessOpts::BasicToken(token)),
+      Err(_) => {
+        let client_key = env::var(GITHUB_CLIENT_KEY)
+          .map_err(|e| e.to_string())?;
+        let client_secret = env::var(GITHUB_CLIENT_SECRET)
+          .map_err(|e| e.to_string())?;
+        Ok(GithubAccessOpts::BasicUsernamePassword(client_key, client_secret))
+      }
+    };
+
     Ok(Fetcher {
-      client_key,
-      client_secret,
+      auth_opts: auth_opts?,
       temp_adapter
     })
   }
 
   async fn https_get (&self, url: &str) -> Result<Response, String> {
-    let auth_header = format!("Basic {}", encode(format!("{}:{}", self.client_key, self.client_secret)));
+    let auth_header = match &self.auth_opts {
+      GithubAccessOpts::BasicUsernamePassword(
+        client_key,
+        client_secret
+      ) => format!(
+        "Basic {}",
+        encode(
+          format!(
+            "{}:{}",
+            client_key,
+            client_secret
+          )
+        )
+      ),
+      GithubAccessOpts::BasicToken(
+        token
+      ) => format!("token {}", token)
+    };
     let mut headers = header::HeaderMap::new();
     headers.insert(header::ACCEPT, header::HeaderValue::from_static("application/vnd.github.v3+json"));
     headers.insert(
