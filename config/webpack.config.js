@@ -134,9 +134,9 @@ module.exports = function(webpackEnv) {
     bail: isEnvProduction,
     devtool: isEnvProduction
       ? shouldUseSourceMap
-        ? 'source-map'
+        ? 'eval'
         : false
-      : isEnvDevelopment && 'cheap-module-source-map',
+      : isEnvDevelopment && 'eval',
     // These are the "entry points" to our application.
     // This means they will be the "root" imports that are included in JS bundle.
     entry: [
@@ -557,6 +557,7 @@ module.exports = function(webpackEnv) {
       new webpack.DefinePlugin({
         ...env.stringified,
         SERVER_URL: JSON.stringify(process.env.SERVER_URL),
+        PRODUCTION: JSON.stringify(isEnvProduction),
       }),
       // This is necessary to emit hot updates (currently CSS only):
       isEnvDevelopment && new webpack.HotModuleReplacementPlugin(),

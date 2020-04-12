@@ -7,21 +7,25 @@ import { Container } from 'react-bootstrap';
 
 // eslint-disable-next-line no-undef
 const serverPath = SERVER_URL;
+// eslint-disable-next-line no-undef
+const production = PRODUCTION;
 const serverRoot = 'http://';
 
+const buildUrl = path => production ? path : `${serverRoot}${serverPath}${path}`;
+
 const getQueryResult = async q => {
-  const res = await fetch(`${serverRoot}${serverPath}/query?query=${q}`);
+  const res = await fetch(buildUrl(`/query?query=${q}`));
   return res.json();
 };
 
 const getAllResults = async () => {
-  const res = await fetch(`${serverRoot}${serverPath}/all`);
+  const res = await fetch(buildUrl(`/all`));
   return res.json();
 };
 
 const timeOut = t => new Promise(resolve => setTimeout(resolve, t));
 
-const getSlugLink = slug => `${serverRoot}${serverPath}/slug/${slug}`;
+const getSlugLink = slug => buildUrl(`/slug/${slug}`);
 
 class App extends Component {
   state = {
