@@ -12,7 +12,7 @@ const production = PRODUCTION;
 const serverRoot = 'http://';
 /* eslint-enable no-undef */
 
-const buildUrl = path => production ? path : `${serverRoot}${serverIp}${serverPort}${path}`;
+const buildUrl = path => production ? path : `${serverRoot}${serverIp}:${serverPort}${path}`;
 
 const getQueryResult = async q => {
   const res = await fetch(buildUrl(`/query?query=${q}`));
