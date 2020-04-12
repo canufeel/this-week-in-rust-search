@@ -1,6 +1,6 @@
 # This week in rust based blog posts
 
-This is just a simple app which allows you to search through all the news titles and blog posts across all [this week in rust](https://github.com/emberian/this-week-in-rust) newsletters.
+The idea behind this app is very simple. [This week in rust](https://github.com/emberian/this-week-in-rust) offers email subscription to recent updates in Rust community and also provides an interface to browse these updates online. Being a comprehensive knowledge base it still is very hard to browse for topics of interest since there is no way to find any particular blog post without knowing in which weekly update it is. This app aims to solve this problem by providing a simple blog post search mechanism and also by adding more Rust related blog post sources in the future.
 
 ## Installation
 
