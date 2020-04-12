@@ -4,10 +4,9 @@ The idea behind this app is very simple. [This week in rust](https://github.com/
 
 ## Installation
 
-- Run the following commands:
+- Run the following command:
 ```shell script
 cp .env.sample .env
-yarn
 ```
 - Setup `GITHUB_CLIENT_KEY` and `GITHUB_CLIENT_SECRET` in created `.env` file. This variables should use your actual github account name and account password since only basic auth scheme is supported.
 
@@ -15,7 +14,7 @@ yarn
 
 Backend:
 ```shell script
-cargo run
+cargo run --bin server
 ```
 
 First run of backend might take some time since data would be fetched. You should expect to see log message as follows which would mean you are all set.
@@ -24,9 +23,18 @@ First run of backend might take some time since data would be fetched. You shoul
 INFO - Starting "actix-web-service-127.0.0.1:8088" service on 127.0.0.1:8088
 ```
 
-Frontend:
+Prod version of server then becomes available at `http://127.0.0.1:8088`
+
+Standalone Dev Frontend:
 ```shell script
 yarn start
 ```
 
-visit `http://localhost:3000/`
+Dev front end then becomes available at `http://127.0.0.1:3000`
+
+## Rebuilding prod front end
+
+The following command is needed to rebuild the front-end app for prod. Note that when prod backend is run front-end is not recompiled so you would have to run this to make sure that you have the most up to date front-end version.
+```shell script
+cargo run --bin force-rebuild
+```

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use log::{debug, warn};
 use futures::future::{ready, Ready};
 use serde_json;
+use actix_files as fs;
 
 use crate::links::{LinksContainer, Link};
 
@@ -108,6 +109,7 @@ pub fn start_server(
           .route("/query", web::get().to(get_query))
           .route("/slug/{slug}", web::get().to(get_url))
           .route("/all", web::get().to(all_items))
+          .service(fs::Files::new("/", "./build").index_file("index.html"))
       })
         .bind(&url)?
         .run()

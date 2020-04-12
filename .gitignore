@@ -3,3 +3,4 @@
 .env
 temp.b
 node_modules/
+/build
