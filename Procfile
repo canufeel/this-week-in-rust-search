@@ -1,1 +1,1 @@
-web: cargo run --bin server --release
+web: ./target/release/server

@@ -1,1 +1,1 @@
-RUST_SKIP_BUILD=1
+RUST_CARGO_BUILD_FLAGS="--release --bin server"
