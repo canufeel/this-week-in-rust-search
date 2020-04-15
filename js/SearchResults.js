@@ -1,32 +1,54 @@
 import React from 'react';
-import { Col, Container, Jumbotron, Row } from 'react-bootstrap';
+import { makeStyles } from '@material-ui/core/styles';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
+import List from '@material-ui/core/List';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ListItemText from '@material-ui/core/ListItemText';
+import AnnouncementIcon from '@material-ui/icons/Announcement';
+
+const useStyles = makeStyles({
+  root: {
+    minWidth: 275,
+  },
+  title: {
+    fontSize: 14,
+  },
+});
 
 const SearchResults = ({
   results,
   openSlugUrl,
-}) => (
-  <Jumbotron fluid id="results">
-    <Container>
-      { results.map(({
-        slug,
-        text,
-        date,
-      }) => (
-        <Row key={slug}>
-          <Col md={2}>
-            <p className="date-field smaller-bottom-padding">
-            { date }
-            </p>
-          </Col>
-          <Col md={10} onClick={ () => openSlugUrl(slug) }>
-            <p className="results-item smaller-bottom-padding">
-            { text }
-            </p>
-          </Col>
-        </Row>
-      ))}
-    </Container>
-  </Jumbotron>
-);
+}) => {
+  const classes = useStyles();
+  return (
+    <Card className={classes.root}>
+      <CardContent>
+        <List component="nav" aria-label="main mailbox folders">
+          { results.map(({
+            slug,
+            text,
+            date,
+          }) => (
+            <ListItem
+              key={slug}
+              button
+              onClick={ () => openSlugUrl(slug)}
+            >
+              <ListItemIcon>
+                <AnnouncementIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary={ text }
+                secondary={ date }
+              />
+            </ListItem>
+          ))}
+        </List>
+      </CardContent>
+    </Card>
+  )
+};
 
 export default SearchResults;

@@ -1,9 +1,8 @@
 import React, { Component, Fragment } from 'react';
 import './App.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import SearchBox from './SearchBox';
 import SearchResults from './SearchResults';
-import { Container } from 'react-bootstrap';
+import Container from '@material-ui/core/Container';
 
 /* eslint-disable no-undef */
 const serverIp = SERVER_IP;
@@ -28,12 +27,14 @@ const timeOut = t => new Promise(resolve => setTimeout(resolve, t));
 
 const getSlugLink = slug => buildUrl(`/slug/${slug}`);
 
+
 class App extends Component {
   state = {
     query: '',
     searchResults: [],
     pendingPromise: null,
   };
+
 
   async openSlugUrl(slug) {
     const url = getSlugLink(slug);
@@ -85,7 +86,7 @@ class App extends Component {
           query={ this.state.query }
           queryUpdate={ (q) => this.updateQuery(q) }
         />
-        <Container id="main-container">
+        <Container maxWidth="md" id="main-container">
           <SearchResults
             results={ this.state.searchResults }
             openSlugUrl={ (s) => this.openSlugUrl(s) }
